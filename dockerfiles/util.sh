@@ -30,11 +30,11 @@ ROOT_DIR=/opengauss
 
 install_path=$ROOT_DIR/cluster
 
-app_path=${install_path}/app/
-log_path=${install_path}/log/
-tmp_path=${install_path}/tmp/
-tool_path=${install_path}/tool/
-package_path=${install_path}/package_path/
+app_path=${install_path}/app
+log_path=${install_path}/log
+tmp_path=${install_path}/tmp
+tool_path=${install_path}/tool
+package_path=${install_path}/package_path
 datanode_dir=${install_path}/datanode/dn1
 
 # cm path
