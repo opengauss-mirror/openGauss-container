@@ -149,23 +149,23 @@ function start_monitor_dead_loop() {
 function check_env_hosts() {
         primary_host=$(echo ${primaryhost} | sed 's/ //g')
         if [ "${primary_host}" == "" ]; then
-                echo "not found primary host"
+                echo "Primary host is empty, at least one primary and one standby host are needed."
                 exit 1
         fi
         standby_hosts=$(echo ${standbyhosts} | sed 's/ //g')
         if [ "${standby_hosts}" == "" ]; then
-                echo "not found primary host"
+                echo "Standby hosts are empty, at least one primary and one standby host are needed."
                 exit 1
         fi
         primary_name=$(echo ${primaryname} | sed 's/ //g')
         if [ "${primary_name}" == "" ]; then
-                echo "not found primary host name"
+                echo "Primary name is empty, at least one primary and one standby host are needed."
                 exit 1
         fi
 
         standby_names=$(echo ${standbynames} | sed 's/ //g')
         if [ "${standby_names}" == "" ]; then
-                echo "not found standby host name"
+                echo "Standby names are empty, at least one primary and one standby host are needed."
                 exit 1
         fi
 }
