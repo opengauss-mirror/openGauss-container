@@ -25,14 +25,14 @@ sh buildDockerImage.sh -v 5.0.0 -i
 
 x86_64平台：
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:latest
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:latest opengauss:latest
+docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.0
+docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.0 opengauss:5.0.0
 ```
 
 arm平台:
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:latest
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:latest opengauss:latest
+docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.0
+docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.0 opengauss:5.0.0
 ```
 
 ### 启动容器

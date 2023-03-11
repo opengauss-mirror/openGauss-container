@@ -39,6 +39,7 @@ COPY generatexml.py /usr/local/bin/
 RUN chmod 755 /usr/local/bin/entrypoint.sh;ln -s /usr/local/bin/entrypoint.sh /
 RUN chmod 755 /usr/local/bin/install.sh;ln -s /usr/local/bin/install.sh /
 RUN chmod 755 /usr/local/bin/util.sh;ln -s /usr/local/bin/util.sh /
+RUN chmod 755 /usr/local/bin/generatexml.py /
 
 ENTRYPOINT ["entrypoint.sh"]
 
