@@ -137,10 +137,18 @@ function write_local_host() {
 function start_monitor_dead_loop() {
         i=1
         while ((i > 0)); do
-                monitor_proc=$(ps -ef | grep om_monitor | grep -v grep)
+                monitor_proc=$(ps -aux | grep om_monitor | grep -v grep)
+                #check if process exist
                 if [ "${monitor_proc}" == "" ]; then
                         source ${ENVFILE}
                         nohup $GAUSSHOME/bin/om_monitor -L $GAUSSLOG/cm/om_monitor &
+                fi
+                #check if process SIGSTOP(kill -19)
+                proc_stat=$(echo $monitor_proc | awk '{print $8}')
+                if [[ $proc_stat = T* ]]; then
+                        echo "om_monitor process has been hung up. wake up it."
+                        pid=$(echo $monitor_proc | awk '{print $2}')
+                        kill -18 ${pid}
                 fi
                 sleep 60
         done
