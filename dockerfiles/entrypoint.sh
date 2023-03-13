@@ -46,6 +46,7 @@ function set_envfile() {
         export LD_LIBRARY_PATH=$GAUSSHOME/lib:$LD_LIBRARY_PATH
         export PATH=${GAUSSHOME}/bin:${PATH}
         export GAUSSLOG=${log_path}
+        export GS_CLUSTER_NAME=cluster
 
         echo "export GPHOME=${tool_path}" >${ENVFILE}
         echo "export PATH=$GPHOME/script/gspylib/pssh/bin:$GPHOME/script:$PATH" >>${ENVFILE}
@@ -57,6 +58,7 @@ function set_envfile() {
         echo "export PATH=${GAUSSHOME}/bin:${PATH}" >>${ENVFILE}
         echo "export GAUSSLOG=${log_path}" >>${ENVFILE}
         echo "export GAUSS_ENV=2" >>${ENVFILE}
+        echo "export GS_CLUSTER_NAME=cluster" >>${ENVFILE}
 
         echo "#HOST INFO" >>${ENVFILE}
         echo "export PRIMARYHOST=${primary_host}" >>${ENVFILE}
@@ -201,6 +203,9 @@ function main() {
         docker_setup_env
         if [ -n "$DATABASE_ALREADY_EXISTS" ]; then
                 if [ "$(id -u)" = '0' ]; then
+                        check_env_hosts
+                        write_local_host
+                        /usr/sbin/sshd -D &
                         exec gosu omm "$BASH_SOURCE" "$@"
                 fi
                 echo "openGauss Database directory appears to contain a database; Skipping init"

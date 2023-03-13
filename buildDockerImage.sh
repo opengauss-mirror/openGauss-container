@@ -131,14 +131,12 @@ check_docker_version
 IMAGE_NAME="opengauss:$VERSION"
 
 # check package exist
-if [ "`ls dockerfiles/ |grep openGauss-${VERSION}*`" == "" ]; then
+if [ "`ls dockerfiles/ |grep openGauss-${VERSION}`" == "" ]; then
   echo "Could not find openGauss $VERSION package.";
   exit 1;
 fi
 
 cd dockerfiles/
-
-#replace version in dockerfile
 
 
 if [ ! "$SKIPCHECKSUM" -eq 1 ]; then
