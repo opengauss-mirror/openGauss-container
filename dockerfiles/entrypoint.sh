@@ -46,6 +46,7 @@ function set_envfile() {
         export LD_LIBRARY_PATH=$GAUSSHOME/lib:$LD_LIBRARY_PATH
         export PATH=${GAUSSHOME}/bin:${PATH}
         export GAUSSLOG=${log_path}
+        export GS_CLUSTER_NAME=cluster
 
         echo "export GPHOME=${tool_path}" >${ENVFILE}
         echo "export PATH=$GPHOME/script/gspylib/pssh/bin:$GPHOME/script:$PATH" >>${ENVFILE}
@@ -57,6 +58,7 @@ function set_envfile() {
         echo "export PATH=${GAUSSHOME}/bin:${PATH}" >>${ENVFILE}
         echo "export GAUSSLOG=${log_path}" >>${ENVFILE}
         echo "export GAUSS_ENV=2" >>${ENVFILE}
+        echo "export GS_CLUSTER_NAME=cluster" >>${ENVFILE}
 
         echo "#HOST INFO" >>${ENVFILE}
         echo "export PRIMARYHOST=${primary_host}" >>${ENVFILE}
@@ -67,6 +69,7 @@ function set_envfile() {
 
 function install_application() {
         cd ${package_path}
+        enterprise_pkg_file=$(ls ${ROOT_DIR}/openGauss-*-all.tar.gz)
         tar -xf ${enterprise_pkg_file} -C .
         plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-\(.*\)-64bit.tar.bz2/\1/g')
         tar -xf openGauss-${plat_info}-64bit.tar.bz2 -C ${app_path}
@@ -198,8 +201,15 @@ function clean_environment() {
 
 function main() {
         docker_setup_env
-        if [ -f "$DATABASE_ALREADY_EXISTS" ]; then
-                echo "openGauss Database directory appears to contain a database; Skipping install."
+        if [ -n "$DATABASE_ALREADY_EXISTS" ]; then
+                if [ "$(id -u)" = '0' ]; then
+                        check_env_hosts
+                        write_local_host
+                        /usr/sbin/sshd -D &
+                        exec gosu omm "$BASH_SOURCE" "$@"
+                fi
+                echo "openGauss Database directory appears to contain a database; Skipping init"
+                start_monitor_dead_loop
                 exit 0
         fi
         check_env_hosts

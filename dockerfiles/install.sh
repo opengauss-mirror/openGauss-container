@@ -88,7 +88,8 @@ function generate_static_config_file() {
         echo "generate static config file failed..."
         exit 1
     fi
-    cp /opengauss/cluster/tool/script/static_config_files/cluster_static_config_${hostname} ${GAUSSHOME}/bin/cluster_static_config
+    cp ${tool_path}/script/static_config_files/cluster_static_config_${hostname} ${GAUSSHOME}/bin/cluster_static_config
+    cp ${tool_path}/version.cfg ${app_path}/bin/upgrade_version
 }
 
 function get_nodeid() {

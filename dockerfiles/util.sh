@@ -44,6 +44,3 @@ cm_server_path=${cm_config_path}/cm_server
 cm_agent_log=${log_path}/cm/cm_agent
 cm_server_log=${log_path}/cm/cm_server
 monitor_log=${log_path}/cm/om_monitor
-
-# all_package_file=openGauss-${OPENGAUSS_VERSION}-${PLATFROM}-64bit-all.tar.gz
-enterprise_pkg_file=$(ls ${ROOT_DIR}/openGauss-*-all.tar.gz)
