@@ -67,6 +67,7 @@ function set_envfile() {
 
 function install_application() {
         cd ${package_path}
+        enterprise_pkg_file=$(ls ${ROOT_DIR}/openGauss-*-all.tar.gz)
         tar -xf ${enterprise_pkg_file} -C .
         plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-\(.*\)-64bit.tar.bz2/\1/g')
         tar -xf openGauss-${plat_info}-64bit.tar.bz2 -C ${app_path}
@@ -198,8 +199,12 @@ function clean_environment() {
 
 function main() {
         docker_setup_env
-        if [ -f "$DATABASE_ALREADY_EXISTS" ]; then
-                echo "openGauss Database directory appears to contain a database; Skipping install."
+        if [ -n "$DATABASE_ALREADY_EXISTS" ]; then
+                if [ "$(id -u)" = '0' ]; then
+                        exec gosu omm "$BASH_SOURCE" "$@"
+                fi
+                echo "openGauss Database directory appears to contain a database; Skipping init"
+                start_monitor_dead_loop
                 exit 0
         fi
         check_env_hosts
