@@ -1,0 +1,42 @@
+FROM openeuler-20.03-lts:latest
+
+ENV LANG en_US.utf8
+
+ENV HETU_VERSION 1.10.0
+ENV JRE_VERSION 11.0.12
+ENV OPENGAUSS_JDBC_VERSION 5.0.0
+
+COPY hetu-server-${HETU_VERSION}-SNAPSHOT.tar.gz .
+COPY opengauss-jdbc-${OPENGAUSS_JDBC_VERSION}.jar .
+COPY openEuler_aarch64.repo /etc/yum.repos.d/openEuler_aarch64.repo
+COPY bisheng-jre-${JRE_VERSION}-linux-aarch64.tar.gz .
+COPY gosu-arm64 /usr/local/bin/gosu
+
+RUN set -eux; \
+    yum install -y tar hostname shadow python net-tools && \
+    groupadd -g 70 omm;  \
+    useradd -u 70 -g omm -d /home/omm omm;  \
+    tar -xf hetu-server-${HETU_VERSION}-SNAPSHOT.tar.gz -C /usr/local/ && \
+    rm hetu-server-${HETU_VERSION}-SNAPSHOT.tar.gz && \
+    mv /usr/local/hetu-server-${HETU_VERSION}-SNAPSHOT /usr/local/hetu-server && \
+    mv opengauss-jdbc-${OPENGAUSS_JDBC_VERSION}.jar /usr/local/hetu-server && \
+    tar -xf bisheng-jre-${JRE_VERSION}-linux-aarch64.tar.gz -C /usr/ && \
+    mv /usr/bisheng-jre-${JRE_VERSION} /usr/bisheng-jre && \
+    rm bisheng-jre-${JRE_VERSION}-linux-aarch64.tar.gz && \
+    chown -R omm:omm /usr/local/hetu-server && \
+    chown -R omm:omm /usr/local/hetu-server && \
+    chmod -R 755 /usr/local/hetu-server && \
+    chmod -R 755 /usr/local/hetu-server && \
+    mkdir -p /var/lib/hetu-server && mkdir -p /var/log/hetu-server && \
+    chown -R omm:omm /var/log/hetu-server && chown -R omm:omm /var/log/hetu-server
+
+ENV GOSU_VERSION 1.12
+RUN set -eux; \
+     chmod +x /usr/local/bin/gosu
+
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/entrypoint.sh;ln -s /usr/local/bin/entrypoint.sh /
+
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["init"]
