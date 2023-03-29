@@ -1,0 +1,45 @@
+databaseName: sharding_db
+
+dataSources:
+  ds_0:
+    url: jdbc:opengauss://173.11.0.2:5432,173.11.0.3:5432/test?targetServerType=master
+    username: test
+    password: test@123
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+  ds_1:
+    url: jdbc:opengauss://173.11.0.5:5432,173.11.0.6:5432/test?targetServerType=master
+    username: test
+    password: test@123
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 50
+    minPoolSize: 1
+
+rules:
+  - !SHARDING
+    tables:
+      t_order:
+        actualDataNodes: ds_${0..1}.t_order_${0..1}
+        databaseStrategy:
+          standard:
+            shardingColumn: order_id
+            shardingAlgorithmName: ds_t1_alg
+        tableStrategy:
+          standard:
+            shardingColumn: order_id
+            shardingAlgorithmName: ts_t1_alg
+
+    shardingAlgorithms:
+      ds_t1_alg:
+        type: INLINE
+        props:
+          algorithm-expression: ds_${order_id % 2}
+      ts_t1_alg:
+        type: INLINE
+        props:
+          algorithm-expression: t_order_${order_id % 2}

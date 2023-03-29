@@ -1,0 +1,21 @@
+
+mode:
+  type: Cluster
+  repository:
+    type: ZooKeeper
+    props:
+      namespace: governance_ds
+      server-lists: 173.11.0.8:2181
+      retryIntervalMilliseconds: 500
+      timeToLiveSeconds: 60
+      maxRetries: 3
+      operationTimeoutMilliseconds: 500
+
+authority:
+  users:
+    - user: root@%
+      password: root
+    - user: sharding
+      password: sharding
+  privilege:
+    type: ALL_PERMITTED
