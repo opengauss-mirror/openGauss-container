@@ -75,6 +75,13 @@ function install_application() {
         tar -xf openGauss-${plat_info}-64bit.tar.bz2 -C ${app_path}
         tar -xf openGauss-${plat_info}-64bit-cm.tar.gz -C ${app_path}
         tar -xf openGauss-${plat_info}-64bit-om.tar.gz -C ${tool_path}
+        # 拷贝python3依赖的lib
+        python_version=$(python3 -V | awk '{print $2}' | awk -F'.' '{print $2}')
+        cd ${tool_path}/lib/ || exit
+        cp bcrypt/lib3.${python_version}/_bcrypt.abi3.so bcrypt/
+        cp _cffi_backend_3.${python_version}/_cffi_backend.so ./
+        cp cryptography/hazmat/bindings/lib3.${python_version}/*.so cryptography/hazmat/bindings/
+        cp nacl/lib3.${python_version}/_sodium.abi3.so nacl/
         mv $ROOT_DIR/gs_createtrust.py ${tool_path}/script
 }
 
