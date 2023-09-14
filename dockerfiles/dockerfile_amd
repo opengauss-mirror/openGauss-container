@@ -1,6 +1,6 @@
 FROM centos:7.6.1810
 
-ENV OPENGAUSS_VERSION 5.0.0
+ENV OPENGAUSS_VERSION 5.1.0
 
 COPY openGauss-${OPENGAUSS_VERSION}-CentOS-64bit-all.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
