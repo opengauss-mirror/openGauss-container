@@ -21,7 +21,7 @@
 
 ARCH=$(uname -p)
 ROOT_DIR=$(pwd)
-VERSION=5.0.0
+VERSION=5.0.1
 
 sharding_image=opengauss-sharding
 hetu_image=opengauss-hetu
