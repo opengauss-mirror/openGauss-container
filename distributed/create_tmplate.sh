@@ -39,8 +39,8 @@ read -s -p "Please input GS_PASSWORD (定义数据库密码)[test@123]: " GS_PAS
 GS_PASSWORD=${GS_PASSWORD:-test@123}
 echo -e "\nGS_PASSWORD set"
 
-read -p "Please input openGauss VERSION [5.0.0]: " VERSION
-VERSION=${VERSION:-5.0.0}
+read -p "Please input openGauss VERSION [5.0.1]: " VERSION
+VERSION=${VERSION:-5.0.1}
 echo "openGauss VERSION set $VERSION"
 
 function check_input()

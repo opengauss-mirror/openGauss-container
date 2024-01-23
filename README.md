@@ -9,14 +9,14 @@
 >    ```
 >    ## 修改sha256校验文件内容
 >    cd `openGauss-docker/dockerfiles`
->    sha256sum openGauss-5.0.0-CentOS-64bit-all.tar.gz > sha256_file_amd64 
+>    sha256sum openGauss-5.0.1-CentOS-64bit-all.tar.gz > sha256_file_amd64 
 >    ```
 
 >-   对于x86平台，使用社区发布的Centos_x86_64的包；对于arm平台，使用发布的openEuler-arm版本企业包。
 
 构建命令：
 ```
-sh buildDockerImage.sh -v 5.0.0 -i
+sh buildDockerImage.sh -v 5.0.1 -i
 ```
 
 ### 使用社区发布的镜像
@@ -25,14 +25,14 @@ sh buildDockerImage.sh -v 5.0.0 -i
 
 x86_64平台：
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.0
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.0 opengauss:5.0.0
+docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.1
+docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.1 opengauss:5.0.1
 ```
 
 arm平台:
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.0
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.0 opengauss:5.0.0
+docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.1
+docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.1 opengauss:5.0.1
 ```
 
 ### 启动容器
@@ -87,13 +87,13 @@ OG_NETWORK=og-network
 GS_PASSWORD=test@123
 
 # 启动实例1
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.0 
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.1 
 
 # 启动实例2
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.0
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.1
 
 # 启动实例3
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.0
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.1
 ```
 
 3. 使用脚本快速启动1主2备的cm集群容器实例
@@ -108,8 +108,8 @@ Please input OG_NETWORK (容器网络名称) [og-network]:
 OG_NETWORK set og-network
 Please input GS_PASSWORD (定义数据库密码)[test@123]: 
 GS_PASSWORD set
-Please input openGauss VERSION [5.0.0]: 
-openGauss VERSION set 5.0.0
+Please input openGauss VERSION [5.0.1]: 
+openGauss VERSION set 5.0.1
 starting  create docker containers...
 ```
 

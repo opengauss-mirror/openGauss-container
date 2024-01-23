@@ -15,7 +15,7 @@
 
 软件包准备：
     hetu-server-1.10.0-SNAPSHOT.tar.gz
-    opengauss-jdbc-5.0.0.jar
+    opengauss-jdbc-5.0.1.jar
     bisheng-jre-11.0.12-linux-aarch64.tar.gz
     bisheng-jre-11.0.12-linux-x64.tar.gz
 
@@ -30,8 +30,8 @@
     打包完成后，可以使用`docker images`名称查询
     ```
     REPOSITORY           TAG                 IMAGE ID            CREATED             SIZE
-    opengauss-sharding   5.0.0               a96c3d8d03c2        4 seconds ago       873MB
-    opengauss-hetu       5.0.0               c2936499866f        4 minutes ago       4.09GB
+    opengauss-sharding   5.0.1               a96c3d8d03c2        4 seconds ago       873MB
+    opengauss-hetu       5.0.1               c2936499866f        4 minutes ago       4.09GB
     ```
 
 #### 镜像使用
@@ -47,7 +47,7 @@
 2. 运行shardingsphere镜像
 
 ```
-docker run --name opengauss-sharding --net og-distri --ip "173.11.0.8" -p 3307:3307 -p 2181:2181 -v /ssconfig:/var/lib/sharding -d opengauss-sharding:5.0.0
+docker run --name opengauss-sharding --net og-distri --ip "173.11.0.8" -p 3307:3307 -p 2181:2181 -v /ssconfig:/var/lib/sharding -d opengauss-sharding:5.0.1
 ```
 
 参数说明：
@@ -65,7 +65,7 @@ docker run --name opengauss-sharding --net og-distri --ip "173.11.0.8" -p 3307:3
 
 -v /ssconfig:/var/lib/sharding： sharding配置目录映射。/var/lib/sharding为容器内部的配置目录， /ssconfig为宿主机目录，可自行指定
 
-opengauss-sharding:5.0.0： 容器镜像名称
+opengauss-sharding:5.0.1： 容器镜像名称
 ```
 
 容器启动后，在宿主机/ssconfig目录下，配置shardingshpere的server.yaml,config-sharding.yaml文件。
@@ -85,7 +85,7 @@ database_name=sharding_db  # 对应config-sharding.yaml中databaseName
 namespace=governance_ds    # 对应server.yaml中ZK的namespace
 server_lists=173.11.0.8:2181  # zookeeper的连接配置
 
-docker run --name opengauss-hetu --net og-distri --ip "173.11.0.9"  -e database_name="$database_name" -e namespace="$namespace" -e server_lists="$server_lists" -d opengauss-hetu:5.0.0
+docker run --name opengauss-hetu --net og-distri --ip "173.11.0.9"  -e database_name="$database_name" -e namespace="$namespace" -e server_lists="$server_lists" -d opengauss-hetu:5.0.1
 ```
 
 参数说明：
@@ -102,5 +102,5 @@ docker run --name opengauss-hetu --net og-distri --ip "173.11.0.9"  -e database_
 
 -e server_lists:  zookeeper的连接配置
 
-opengauss-hetu:5.0.0： 容器镜像名称
+opengauss-hetu:5.0.1： 容器镜像名称
 ```
