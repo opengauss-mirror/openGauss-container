@@ -69,12 +69,12 @@ function set_envfile() {
 
 function install_application() {
         cd ${package_path}
-        enterprise_pkg_file=$(ls ${ROOT_DIR}/openGauss-*-all.tar.gz)
+        enterprise_pkg_file=$(ls ${ROOT_DIR}/openGauss-All-*.tar.gz)
         tar -xf ${enterprise_pkg_file} -C .
-        plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-\(.*\)-64bit.tar.bz2/\1/g')
-        tar -xf openGauss-${plat_info}-64bit.tar.bz2 -C ${app_path}
-        tar -xf openGauss-${plat_info}-64bit-cm.tar.gz -C ${app_path}
-        tar -xf openGauss-${plat_info}-64bit-om.tar.gz -C ${tool_path}
+        plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-Server-\(.*\).tar.bz2/\1/g')
+        tar -xf openGauss-Server-${plat_info}.tar.bz2 -C ${app_path}
+        tar -xf openGauss-CM-${plat_info}.tar.gz -C ${app_path}
+        tar -xf openGauss-OM-${plat_info}.tar.gz -C ${tool_path}
         # 拷贝python3依赖的lib
         python_version=$(python3 -V | awk '{print $2}' | awk -F'.' '{print $2}')
         cd ${tool_path}/lib/ || exit
@@ -207,6 +207,7 @@ function clean_environment() {
 }
 
 function main() {
+        chmod 777 /tmp
         docker_setup_env
         if [ -n "$DATABASE_ALREADY_EXISTS" ]; then
                 if [ "$(id -u)" = '0' ]; then

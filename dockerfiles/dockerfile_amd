@@ -1,8 +1,8 @@
 FROM centos:7.6.1810
 
-ENV OPENGAUSS_VERSION 5.1.0
+ENV OPENGAUSS_VERSION 6.0.0
 
-COPY openGauss-${OPENGAUSS_VERSION}-CentOS-64bit-all.tar.gz .
+COPY openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
 COPY gs_createtrust.py .
 ENV LANG en_US.utf8
@@ -15,7 +15,7 @@ RUN set -eux; \
 
     mkdir -p /opengauss && \
     chmod 700 /opengauss && \
-    mv openGauss-${OPENGAUSS_VERSION}-CentOS-64bit-all.tar.gz /opengauss && \
+    mv openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz /opengauss && \
     mv gs_createtrust.py /opengauss && \
     mkdir -p /volume && \
     chmod -R 755 /volume && \
