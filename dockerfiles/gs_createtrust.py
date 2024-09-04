@@ -1110,7 +1110,7 @@ General options:
         output: NA
         """
         if (hostname == self.localHost or
-                hostname in DefaultValue.get_local_ips()):
+                hostname in DefaultValue.get_local_ips(NetUtil.get_ip_version(hostname))):
             return
 
         bashrc_file = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, ".bashrc")
@@ -1243,7 +1243,7 @@ General options:
             shell_file = os.path.join(localDirPath, "./local/ssh-agent.sh")
             for ip in ips:
                 if (ip == self.localHost or
-                        ip in DefaultValue.get_local_ips()):
+                        ip in DefaultValue.get_local_ips(NetUtil.get_ip_version(ip))):
                     continue
                 session = self.get_ssh_session(ip)
                 DefaultValue.register_remote_ssh_agent(session, ip, self.logger)
