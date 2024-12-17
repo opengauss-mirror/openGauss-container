@@ -2,7 +2,7 @@ FROM openeuler-20.03-lts:latest
 
 ENV OPENGAUSS_VERSION 6.0.0
 
-COPY openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz .
+COPY openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-aarch64.tar.gz .
 COPY gosu-arm64 /usr/local/bin/gosu
 COPY gs_createtrust.py .
 ENV LANG en_US.utf8
@@ -16,7 +16,7 @@ RUN set -eux; \
 
     mkdir -p /opengauss && \
     chmod 700 /opengauss && \
-    mv openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz /opengauss && \
+    mv openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-aarch64.tar.gz /opengauss && \
     mv gs_createtrust.py /opengauss && \
     mkdir -p /volume && \
     chmod -R 755 /volume && \
