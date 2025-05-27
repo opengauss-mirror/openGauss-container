@@ -4,7 +4,6 @@ ENV OPENGAUSS_VERSION 6.0.0
 
 COPY openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
-COPY gs_createtrust.py .
 ENV LANG en_US.utf8
 
 RUN set -eux; \
@@ -16,7 +15,6 @@ RUN set -eux; \
     mkdir -p /opengauss && \
     chmod 700 /opengauss && \
     mv openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz /opengauss && \
-    mv gs_createtrust.py /opengauss && \
     mkdir -p /volume && \
     chmod -R 755 /volume && \
     chown -R omm:omm /opengauss
@@ -34,10 +32,12 @@ COPY entrypoint.sh /usr/local/bin/
 COPY entrypoint.sh /usr/local/bin/
 COPY install.sh /usr/local/bin/
 COPY util.sh /usr/local/bin/
+COPY create_trust.sh /usr/local/bin/
 COPY generatexml.py /usr/local/bin/
 RUN chmod 755 /usr/local/bin/entrypoint.sh;ln -s /usr/local/bin/entrypoint.sh /
 RUN chmod 755 /usr/local/bin/install.sh;ln -s /usr/local/bin/install.sh /
 RUN chmod 755 /usr/local/bin/util.sh;ln -s /usr/local/bin/util.sh /
+RUN chmod 755 /usr/local/bin/create_trust.sh;ln -s /usr/local/bin/create_trust.sh /
 RUN chmod 755 /usr/local/bin/generatexml.py /
 
 ENTRYPOINT ["entrypoint.sh"]
