@@ -82,7 +82,6 @@ function install_application() {
         cp _cffi_backend_3.${python_version}/_cffi_backend.so ./
         cp cryptography/hazmat/bindings/lib3.${python_version}/*.so cryptography/hazmat/bindings/
         cp nacl/lib3.${python_version}/_sodium.abi3.so nacl/
-        mv $ROOT_DIR/gs_createtrust.py ${tool_path}/script
 }
 
 function create_install_path() {

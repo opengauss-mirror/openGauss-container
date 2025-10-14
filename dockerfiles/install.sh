@@ -213,22 +213,7 @@ function _test_hosts_trust() {
 
 function create_user_trust() {
     echo "start to create omm user trust"
-    cp ${app_path}/bin/encrypt ${tool_path}/script/gspylib/clib/
-    expect_createtrust "python3 ${tool_path}/script/gs_createtrust.py -f /home/omm/hostfile -l create_trust.log" $GS_PASSWORD "Successfully created SSH trust"
-
-    if [ "$hostname" == "${PRIMARYNAME}" ]; then
-        sleep 30
-        max_retry_times=5
-        for ((i = 1; i <= $max_retry_times; i++)); do
-            _test_hosts_trust
-            if [ $? == 0 ]; then
-                echo "create host trust success."
-                break
-            fi
-            echo "create trust failed for $i time. we will rebuild again."
-            expect_createtrust "python3 ${tool_path}/script/gs_createtrust.py -f /home/omm/hostfile -l create_trust.log" $GS_PASSWORD "Successfully created SSH trust"
-        done
-    fi
+    sh create_trust.sh /home/omm/hostfile $GS_PASSWORD
 
 }
 
