@@ -1,20 +1,20 @@
-FROM centos:7.6.1810
+FROM openeuler-20.03-lts:latest
 
-ENV OPENGAUSS_VERSION 6.0.0
+ENV OPENGAUSS_VERSION 7.0.0RC2
 
-COPY openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz .
+COPY openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-x86_64.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
 ENV LANG en_US.utf8
 
 RUN set -eux; \
-    yum install -y bzip2 bzip2-devel curl libaio readline-devel expect \
-    which git python3 python3-devel openssl-devel net-tools openssh-server vim && \
+    yum install -y bzip2 bzip2-devel curl libaio readline-devel expect tar shadow hostname passwd \
+    which git python3 python3-devel openssl-devel net-tools openssh-server vim iputils lsof iproute && \
     groupadd -g 70 omm;  \
     useradd -u 70 -g omm -d /home/omm omm;  \
 
     mkdir -p /opengauss && \
     chmod 700 /opengauss && \
-    mv openGauss-All-${OPENGAUSS_VERSION}-CentOS7-x86_64.tar.gz /opengauss && \
+    mv openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-x86_64.tar.gz /opengauss && \
     mkdir -p /volume && \
     chmod -R 755 /volume && \
     chown -R omm:omm /opengauss
