@@ -129,7 +129,7 @@ check_docker_version
 
 
 # openGauss Database Image Name
-IMAGE_NAME="opengauss:$VERSION"
+IMAGE_NAME="opengauss-cm:$VERSION"
 
 # check package exist
 if [ "`ls dockerfiles/ |grep openGauss-All-${VERSION}`" == "" ]; then

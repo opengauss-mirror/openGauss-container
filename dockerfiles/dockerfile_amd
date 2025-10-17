@@ -1,10 +1,11 @@
 FROM openeuler-20.03-lts:latest
 
-ENV OPENGAUSS_VERSION 7.0.0RC2
+ENV OPENGAUSS_VERSION 7.0.0-RC2
 
 COPY openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-x86_64.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
 ENV LANG en_US.utf8
+COPY openEuler_x86_64.repo /etc/yum.repos.d/openEuler_x86_64.repo
 
 RUN set -eux; \
     yum install -y bzip2 bzip2-devel curl libaio readline-devel expect tar shadow hostname passwd \
