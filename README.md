@@ -25,14 +25,14 @@ sh buildDockerImage.sh -v 5.0.0 -i
 
 x86_64平台：
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.0
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/x86_64/opengauss:5.0.0 opengauss:5.0.0
+docker pull swr.cn-north-4.myhuaweicloud.com/opengauss-x86-64/opengauss-cm:6.0.2
+docker tag swr.cn-north-4.myhuaweicloud.com/opengauss-x86-64/opengauss-cm:6.0.2 opengauss-cm:6.0.2
 ```
 
 arm平台:
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.0
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss:5.0.0 opengauss:5.0.0
+docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss-cm:6.0.2
+docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss-cm:6.0.2 opengauss-cm:6.0.2
 ```
 
 ### 启动容器
@@ -87,14 +87,23 @@ OG_NETWORK=og-network
 GS_PASSWORD=test@123
 
 # 启动实例1
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.0 
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
 
 # 启动实例2
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.0
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
 
 # 启动实例3
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:5.0.0
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
 ```
+
+**说明** 
+
+> 如果主备实例分别在不同节点上运行，docker run启动时候使用的是宿主机网络（添加 --net host）而不是容器网络，需要对上面的命令去掉 --ip "$primary_nodeip" 。 \
+> 即主机网络下不能指定ip，因为ip是固定和主机相同的。 只有在自定义的容器网络下才可以指定ip。
+
+> 对于容器网络，可以打通几个节点做ssh互信。CM和数据库只有少部分场景需要互信。 \
+> 对于主机网络，没法建立容器和容器之间互信（因为和主机ip相同无法区分）。因此在容器里面OM工具是无法使用的，OM工具对于多节点管理强依赖ssh互信。
+
 
 3. 使用脚本快速启动1主2备的cm集群容器实例
 

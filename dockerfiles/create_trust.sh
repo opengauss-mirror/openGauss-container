@@ -53,7 +53,7 @@ for node in "${NODES[@]}"; do
     expect_createtrust "$node" "$GS_PASSWORD" "config success"
 
     echo "test trust connection with node $node..."
-    ssh -o "StrictHostKeyChecking=no" "$node" "echo 'create trust success.'"
+    timeout 300 ssh -o "StrictHostKeyChecking=no" "$node" "echo 'create trust success.'"
     
     if [ $? -eq 0 ]; then
         echo "$node config success"

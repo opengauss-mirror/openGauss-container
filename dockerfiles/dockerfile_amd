@@ -1,6 +1,6 @@
 FROM openeuler-20.03-lts:latest
 
-ENV OPENGAUSS_VERSION 7.0.0-RC2
+ENV OPENGAUSS_VERSION 6.0.2
 
 COPY openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-x86_64.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
