@@ -12,10 +12,8 @@ RUN set -eux; \
     which git python3 python3-devel openssl-devel net-tools openssh-server vim iputils lsof iproute && \
     groupadd -g 70 omm;  \
     useradd -u 70 -g omm -d /home/omm omm;  \
-
     mkdir -p /opengauss && \
     chmod 700 /opengauss && \
-    mv openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-x86_64.tar.gz /opengauss && \
     mkdir -p /volume && \
     chmod -R 755 /volume && \
     chown -R omm:omm /opengauss

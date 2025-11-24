@@ -82,7 +82,7 @@ check_docker_version() {
 ##############
 
 # Parameters
-VERSION="3.0.0"
+VERSION="6.0.2"
 SKIPCHECKSUM=0
 DOCKEROPS=""
 MIN_DOCKER_VERSION_MAJOR="17"
