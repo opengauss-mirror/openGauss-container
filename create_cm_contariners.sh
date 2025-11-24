@@ -39,15 +39,15 @@ read -s -p "Please input GS_PASSWORD (定义数据库密码)[test@123]: " GS_PAS
 GS_PASSWORD=${GS_PASSWORD:-test@123}
 echo -e "\nGS_PASSWORD set"
 
-read -p "Please input openGauss VERSION [5.0.0]: " VERSION
-VERSION=${VERSION:-5.0.0}
+read -p "Please input openGauss VERSION [6.0.2]: " VERSION
+VERSION=${VERSION:-6.0.2}
 echo "openGauss VERSION set $VERSION"
 
 function check_input()
 {
-    docker_exist=`docker images |grep -w opengauss | grep -w $VERSION`
+    docker_exist=`docker images |grep -w opengauss-cm | grep -w $VERSION`
     if [ "$docker_exist" == "" ]; then
-        echo "docker images opengauss:$VERSION not found."
+        echo "docker images opengauss-cm:$VERSION not found."
     fi
 }
 
@@ -79,10 +79,10 @@ echo "Standby1: $standby1_nodename $standby1_nodeip"
 echo "Standby2: $standby2_nodename $standby2_nodeip"
 
 
-docker run -d -it -P --ulimit nofile=1000000:1000000 --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:$VERSION 
+docker run -d -it -P --ulimit nofile=1000000:1000000 --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:$VERSION 
 
-docker run -d -it -P --ulimit nofile=1000000:1000000 --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:$VERSION
+docker run -d -it -P --ulimit nofile=1000000:1000000 --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:$VERSION
 
-docker run -d -it -P --ulimit nofile=1000000:1000000 --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss:$VERSION
+docker run -d -it -P --ulimit nofile=1000000:1000000 --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:$VERSION
 
 echo "OpenGauss Database Docker Containers created."

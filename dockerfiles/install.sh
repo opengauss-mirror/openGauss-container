@@ -213,7 +213,7 @@ function _test_hosts_trust() {
 
 function create_user_trust() {
     echo "start to create omm user trust"
-    sh create_trust.sh /home/omm/hostfile $GS_PASSWORD
+    timeout 600 sh create_trust.sh /home/omm/hostfile $GS_PASSWORD
 
 }
 

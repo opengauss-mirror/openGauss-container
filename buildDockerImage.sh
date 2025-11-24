@@ -82,7 +82,7 @@ check_docker_version() {
 ##############
 
 # Parameters
-VERSION="3.0.0"
+VERSION="6.0.2"
 SKIPCHECKSUM=0
 DOCKEROPS=""
 MIN_DOCKER_VERSION_MAJOR="17"
@@ -129,7 +129,7 @@ check_docker_version
 
 
 # openGauss Database Image Name
-IMAGE_NAME="opengauss:$VERSION"
+IMAGE_NAME="opengauss-cm:$VERSION"
 
 # check package exist
 if [ "`ls dockerfiles/ |grep openGauss-All-${VERSION}`" == "" ]; then
@@ -179,7 +179,7 @@ echo "Building image '$IMAGE_NAME' ..."
 
 # BUILD THE IMAGE (replace all environment variables)
 BUILD_START=$(date '+%s')
-docker build --force-rm=true --no-cache=true \
+docker build --force-rm=true --no-cache=true --network=host \
        $DOCKEROPS $PROXY_SETTINGS  \
        -t $IMAGE_NAME -f $DOCKERFILE . || {
   echo ""

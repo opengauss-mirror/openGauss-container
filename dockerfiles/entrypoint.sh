@@ -69,7 +69,7 @@ function set_envfile() {
 
 function install_application() {
         cd ${package_path}
-        enterprise_pkg_file=$(ls ${ROOT_DIR}/openGauss-All-*.tar.gz)
+        enterprise_pkg_file=$(ls /openGauss-All-*.tar.gz)
         tar -xf ${enterprise_pkg_file} -C .
         plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-Server-\(.*\).tar.bz2/\1/g')
         tar -xf openGauss-Server-${plat_info}.tar.bz2 -C ${app_path}
@@ -82,6 +82,7 @@ function install_application() {
         cp _cffi_backend_3.${python_version}/_cffi_backend.so ./
         cp cryptography/hazmat/bindings/lib3.${python_version}/*.so cryptography/hazmat/bindings/
         cp nacl/lib3.${python_version}/_sodium.abi3.so nacl/
+
 }
 
 function create_install_path() {
@@ -196,17 +197,10 @@ function generate_xml() {
         echo "generate cluster xml file success."
 }
 function clean_environment() {
-
         unset GS_PASSWORD
-
-        pkgfile=$(ls /opengauss/openGauss*)
-        if [ "$pkgfile" != "" ]; then
-                rm ${pkgfile}
-        fi
 }
 
 function main() {
-        chmod 777 /tmp
         docker_setup_env
         if [ -n "$DATABASE_ALREADY_EXISTS" ]; then
                 if [ "$(id -u)" = '0' ]; then
@@ -238,5 +232,8 @@ function main() {
         clean_environment
         start_monitor_dead_loop
 }
-
+if [ "$(id -u)" = '0' ]; then
+        chown omm:omm /opengauss
+        chmod 777 /tmp
+fi
 main $@
