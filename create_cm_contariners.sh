@@ -35,9 +35,29 @@ read -p "Please input OG_NETWORK (容器网络名称) [og-network]: " OG_NETWORK
 OG_NETWORK=${OG_NETWORK:-og-network}
 echo "OG_NETWORK set $OG_NETWORK"
 
-read -s -p "Please input GS_PASSWORD (定义数据库密码)[test@123]: " GS_PASSWORD
-GS_PASSWORD=${GS_PASSWORD:-test@123}
-echo -e "\nGS_PASSWORD set"
+echo "Please enter a password with at least 8-16 digits containing at least one uppercase, lowercase, numeric and special character."
+read -s -p "Please input GS_PASSWORD (定义数据库密码): " GS_PASSWORD
+GS_PASSWORD=${GS_PASSWORD:-}
+echo -e "\n"
+retry_count=1
+while [ true ]; do
+  if [[ "$GS_PASSWORD" =~  ^(.{8,}).*$ ]] &&  [[ "$GS_PASSWORD" =~ ^(.*[a-z]+).*$ ]] && [[ "$GS_PASSWORD" =~ ^(.*[A-Z]).*$ ]] &&  [[ "$GS_PASSWORD" =~ ^(.*[0-9]).*$ ]] && [[ "$GS_PASSWORD" =~ ^(.*[#?!@$%^&*-]).*$ ]]; then
+    echo "The supplied GS_PASSWORD is meet requirements."
+    break
+  else
+    echo -e "\nPassword is incorrect. Please Check if the password contains uppercase, lowercase, numbers, special characters, and password length(8).
+        At least one uppercase, lowercase, numeric, special character."
+
+    if [ $retry_count -eq 3 ]; then
+        echo -e "\nPassword is incorrent more than three times."
+        exit 1
+    fi
+    read -s -p "Please input GS_PASSWORD (定义数据库密码): " GS_PASSWORD
+    echo -e "\n"
+  fi
+  ((retry_count++))
+done
+echo "GS_PASSWORD set"
 
 read -p "Please input openGauss VERSION [6.0.2]: " VERSION
 VERSION=${VERSION:-6.0.2}
