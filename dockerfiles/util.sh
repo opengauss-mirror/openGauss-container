@@ -26,21 +26,23 @@ USER=omm
 GROUP=omm
 ENVFILE=/home/omm/.bashrc
 
-ROOT_DIR=/opengauss
+DATA_BASE=/var/lib/opengauss
+APP_PATH=/usr/local/opengauss
 
-install_path=$ROOT_DIR/cluster
+log_path=${DATA_BASE}/log
+tmp_path=${DATA_BASE}/tmp
+datanode_dir=${DATA_BASE}/data
 
-app_path=${install_path}/app
-log_path=${install_path}/log
-tmp_path=${install_path}/tmp
-tool_path=${install_path}/tool
-package_path=${install_path}/package_path
-datanode_dir=${install_path}/datanode/dn1
+app_path=${APP_PATH}/app
+tool_path=${APP_PATH}/tools
+package_path=${APP_PATH}/package
 
 # cm path
-cm_config_path=${install_path}/cm
+cm_config_path=${DATA_BASE}/cm
 cm_agent_path=${cm_config_path}/cm_agent
 cm_server_path=${cm_config_path}/cm_server
 cm_agent_log=${log_path}/cm/cm_agent
 cm_server_log=${log_path}/cm/cm_server
 monitor_log=${log_path}/cm/om_monitor
+
+cluster_maintain_file=${APP_PATH}/cluster_maintain_file

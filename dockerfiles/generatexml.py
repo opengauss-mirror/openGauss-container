@@ -35,8 +35,11 @@ class GenerateXML:
         self.logpath = os.environ.get("GAUSSLOG")
         self.tmppath = os.environ.get("PGHOST")
         self.toolpath = os.environ.get("GPHOME")
-        self.datanodepath = "/opengauss/cluster/datanode/dn1"
-        self.cmpath = "/opengauss/cluster/cm"
+        self.datanodepath = "/var/lib/opengauss/data"
+        self.cmpath = "/var/lib/opengauss/cm"
+
+        self.db_port = os.environ.get("PGPORT")
+        self.cm_port = os.environ.get("CMPORT")
 
 
     def parse_args(self):
@@ -80,7 +83,7 @@ class GenerateXML:
     <PARAM name="gaussdbLogPath" value="{logpath}" />
     <PARAM name="tmpMppdbPath" value="{tmppath}"/>
     <PARAM name="gaussdbToolPath" value="{toolpath}"/>
-    <PARAM name="corePath" value="/opengauss/cluster/corefile"/>
+    <PARAM name="corePath" value="/var/lib/opengauss/corefile"/>
     <PARAM name="backIp1s" value="{hostlists}"/>
     <PARAM name="clusterType" value="single-inst"/>
   </CLUSTER>
@@ -92,21 +95,19 @@ class GenerateXML:
         <PARAM name="azName" value="AZ1"/>
         <PARAM name="azPriority" value="1"/>
 		<PARAM name="cmsNum" value="1"/> 
-        <PARAM name="cmServerPortBase" value="20000"/> 
+        <PARAM name="cmServerPortBase" value="{cm_port}"/> 
         <PARAM name="cmServerListenIp1" value="{hostlists}"/> 
         <PARAM name="cmServerHaIp1" value="{hostlists}"/> 
         <PARAM name="cmServerlevel" value="1"/> 
         <PARAM name="cmServerRelation" value="{hostnamelists}"/> 
         <PARAM name="cmDir" value="{cmdir}"/> 
         <PARAM name="dataNum" value="1"/>
-        <PARAM name="dataPortBase" value="5432"/>
-        <PARAM name="dataPortStandby" value="5432"/>
-        <PARAM name="dataPortDummyStandby" value="5432"/>
+        <PARAM name="dataPortBase" value="{db_port}"/>
         <PARAM name="dataNode1" value="{dataNode1}"/>
     </DEVICE>
         """.format(hostlists=hostarrstr, apppath=self.apppath, logpath=self.logpath, tmppath=self.tmppath,
     toolpath=self.toolpath, hostnamelists=hostnamearrstr, primaryhostname=primary_hostname, primaryhost=primary_host,
-    cmdir=self.cmpath, dataNode1=datanodestr)
+    cmdir=self.cmpath, dataNode1=datanodestr, db_port=self.db_port, cm_port=self.cm_port)
 	
         for idx,host in enumerate(standby_hosts):
             s_str = """

@@ -28,10 +28,32 @@ source install.sh
 # Loads various settings that are used elsewhere in the script
 # This should be called before any other functions
 function docker_setup_env() {
+
+        # 0 with cm; 1 without cm
+        declare -g SINGLE_MODE
+
+        # 0 normal; 1 primary; 2 standby; 3 cascade_standby
+        declare -g INSTANCE_TYPE
+        
+
         declare -g DATABASE_ALREADY_EXISTS
         # look specifically for OG_VERSION, as it is expected in the DB dir
         if [ -s "$datanode_dir/PG_VERSION" ]; then
                 DATABASE_ALREADY_EXISTS='true'
+        fi
+
+        declare -g DATABASE_APP_EXISTS
+        if [ -d "$app_path" ] && [ -f "$app_path/bin/gaussdb" ]; then
+                DATABASE_APP_EXISTS='true'
+        fi
+
+        declare -g NEED_INSTALL_CM_COMPONENT=0
+        if [ -n "$DATABASE_ALREADY_EXISTS" ] && [ -n "DATABASE_APP_EXISTS" ]; then
+                if [ -d "$cm_agent_path" ] && [ -f "$cm_agent_path/cm_agent.conf" ] && [ -d "$cm_server_path" ] && [ -f "$cm_server_path/cm_server.conf" ]; then
+                        NEED_INSTALL_CM_COMPONENT=0
+                else
+                        NEED_INSTALL_CM_COMPONENT=1
+                fi
         fi
 }
 
@@ -47,6 +69,10 @@ function set_envfile() {
         export PATH=${GAUSSHOME}/bin:${PATH}
         export GAUSSLOG=${log_path}
         export GS_CLUSTER_NAME=cluster
+        export PGPORT=${dbport}
+        export CMPORT=${cmport}
+        export SINGLE_MODE=${SINGLE_MODE}
+        export INSTANCE_TYPE=${INSTANCE_TYPE}
 
         echo "export GPHOME=${tool_path}" >${ENVFILE}
         echo "export PATH=$GPHOME/script/gspylib/pssh/bin:$GPHOME/script:$PATH" >>${ENVFILE}
@@ -65,38 +91,13 @@ function set_envfile() {
         echo "export STANDBYHOSTS=${standby_hosts}" >>${ENVFILE}
         echo "export PRIMARYNAME=${primary_name}" >>${ENVFILE}
         echo "export STANDBYNAMES=${standby_names}" >>${ENVFILE}
+        echo "export PGPORT=${dbport}" >>${ENVFILE}
+        echo "export CMPORT=${cmport}" >>${ENVFILE}
+        echo "export SINGLE_MODE=${SINGLE_MODE}" >>${ENVFILE}
+        echo "export INSTANCE_TYPE=${INSTANCE_TYPE}" >>${ENVFILE}
 }
 
-function install_application() {
-        cd ${package_path}
-        enterprise_pkg_file=$(ls /openGauss-All-*.tar.gz)
-        tar -xf ${enterprise_pkg_file} -C .
-        plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-Server-\(.*\).tar.bz2/\1/g')
-        tar -xf openGauss-Server-${plat_info}.tar.bz2 -C ${app_path}
-        tar -xf openGauss-CM-${plat_info}.tar.gz -C ${app_path}
-        tar -xf openGauss-OM-${plat_info}.tar.gz -C ${tool_path}
-        # 拷贝python3依赖的lib
-        python_version=$(python3 -V | awk '{print $2}' | awk -F'.' '{print $2}')
-        cd ${tool_path}/lib/ || exit
-        cp bcrypt/lib3.${python_version}/_bcrypt.abi3.so bcrypt/
-        cp _cffi_backend_3.${python_version}/_cffi_backend.so ./
-        cp cryptography/hazmat/bindings/lib3.${python_version}/*.so cryptography/hazmat/bindings/
-        cp nacl/lib3.${python_version}/_sodium.abi3.so nacl/
 
-}
-
-function create_install_path() {
-        if [ -d ${install_path} ]; then
-                rm -rf ${install_path}
-        fi
-
-        dir_array=($app_path $log_path $tmp_path $tool_path $datanode_dir $package_path $cm_agent_path $cm_server_path $cm_agent_log $cm_server_log $monitor_log)
-        for i in ${dir_array[*]}; do
-                echo "${i}"
-                mkdir -p "${i}"
-        done
-        chmod -R 700 /opengauss
-}
 
 function set_user_passwd() {
         echo "${GS_PASSWORD}" | passwd $USER --stdin
@@ -113,17 +114,6 @@ function config_user_ssh() {
         chmod 600 /home/omm/.ssh/config
 }
 
-function config_sshd() {
-        # 在容器里面不加该配置，会导致ssh连接拒绝
-        # ssh: connect to host dockerip port 22: Connection refused
-        ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' >/dev/null
-        ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N '' >/dev/null
-        ssh-keygen -t rsa -f /etc/ssh/ssh_host_ecdsa_key -N '' >/dev/null
-        ssh-keygen -t rsa -f /etc/ssh/ssh_host_ed25519_key -N '' >/dev/null
-        mkdir -p /var/run/sshd
-
-        /usr/sbin/sshd -D &
-}
 
 function write_local_host() {
         hostfile=/etc/hosts
@@ -144,9 +134,26 @@ function write_local_host() {
         chown $USER:$GROUP /home/omm/hostfile
 }
 
+function start_instance_loop() {
+                source ${ENVFILE}
+
+                opts=""
+                if [ $INSTANCE_TYPE -eq 1 ]; then
+                        opts=" -M primary"
+                elif [ $INSTANCE_TYPE -eq 2 ]; then
+                        opts=" -M standby"
+                elif [ $INSTANCE_TYPE -eq 3 ]; then
+                        opts=" -M cascade_standby"
+                fi
+                procstatus=$(ps ux | grep gaussdb  | grep ${datanode_dir} | grep -v grep)
+                if [ "${procstatus}" == "" ]; then
+                        echo "database instance is not running, start it."
+                        gs_ctl start -D ${datanode_dir} ${opts}
+                fi
+}
+
 function start_monitor_dead_loop() {
-        i=1
-        while ((i > 0)); do
+
                 monitor_proc=$(ps -aux | grep om_monitor | grep -v grep)
                 #check if process exist
                 if [ "${monitor_proc}" == "" ]; then
@@ -160,11 +167,66 @@ function start_monitor_dead_loop() {
                         pid=$(echo $monitor_proc | awk '{print $2}')
                         kill -18 ${pid}
                 fi
+
+}
+
+function keep_loop() {
+        i=1
+        while ((i > 0)); do
+                if [ -f "${cluster_maintain_file}" ]; then
+                        echo "cluster maintain file ${cluster_maintain_file} exist, skip loop."
+                        sleep 60
+                        continue
+                fi
+                source ${ENVFILE}
+                if [ $SINGLE_MODE -eq 1 ]; then
+                        start_instance_loop
+                else
+                        start_monitor_dead_loop
+                fi
                 sleep 60
-        done
+        done;
+        
 }
 
 function check_env_hosts() {
+        dbport=$(echo ${dbport} | sed 's/ //g')
+        if [ "${dbport}" == "" ]; then
+                echo "Database port is empty, use 5432 as default."
+                dbport=5432
+        fi
+
+        cmport=$(echo ${cmport} | sed 's/ //g')
+        if [ "${cmport}" == "" ]; then
+                echo "CM port is empty, use 25000 as default."
+                cmport=25000
+        fi
+
+        SINGLE_MODE=$(echo ${single} | sed 's/ //g')
+        if [ "${SINGLE_MODE}" == "" ]; then
+                echo "Single instance mode is empty, use 0 as default."
+                SINGLE_MODE=0
+        fi
+
+        inst_type=$(echo ${instance_type} | sed 's/ //g')
+        echo "Instance type is ${inst_type}."
+        if [ "${inst_type}" == "" ]; then
+                INSTANCE_TYPE=0
+        elif [ "${inst_type}" == "primary" ]; then
+                INSTANCE_TYPE=1
+        elif [ "${inst_type}" == "standby" ]; then
+                INSTANCE_TYPE=2
+        elif [ "${inst_type}" == "cascade_standby" ]; then
+                INSTANCE_TYPE=3
+        else
+                INSTANCE_TYPE=0
+        fi
+        
+        if [ "$SINGLE_MODE" = 1 ] && [ "$INSTANCE_TYPE" = 0 ]; then
+                echo "Single mode is ${SINGLE_MODE}, instance type is ${INSTANCE_TYPE}, skip check hosts."
+                return
+        fi
+
         primary_host=$(echo ${primaryhost} | sed 's/ //g')
         if [ "${primary_host}" == "" ]; then
                 echo "Primary host is empty, at least one primary and one standby host are needed."
@@ -186,37 +248,72 @@ function check_env_hosts() {
                 echo "Standby names are empty, at least one primary and one standby host are needed."
                 exit 1
         fi
-}
-function generate_xml() {
-        echo "python3 /usr/local/bin/generatexml.py --primary-host=${primary_host} --standby-host=${standby_hosts} --primary-hostname=${primary_name} --standby-hostname=${standby_names}"
-        python3 /usr/local/bin/generatexml.py --primary-host=${primary_host} --standby-host=${standby_hosts} --primary-hostname=${primary_name} --standby-hostname=${standby_names}
-        if [ ! -f "/home/omm/cluster.xml" ]; then
-                echo "generate cluster xml file failed."
-                exit 1
-        fi
-        echo "generate cluster xml file success."
-}
+        
+}       
+
 function clean_environment() {
         unset GS_PASSWORD
+}
+
+function start_at_install() {
+        if [ $SINGLE_MODE -eq 0 ]; then
+                nohup $GAUSSHOME/bin/om_monitor -L $GAUSSLOG/cm/om_monitor &
+                return
+        fi
+        if [ $INSTANCE_TYPE -eq 0 ]; then
+                gs_ctl start -D ${datanode_dir}
+        elif [ $INSTANCE_TYPE -eq 1 ]; then
+                gs_ctl start -D ${datanode_dir} -M primary
+        elif [ $INSTANCE_TYPE -eq 2 ]; then
+                gs_ctl start -D ${datanode_dir} -M standby
+                gs_ctl build -D ${datanode_dir} -M standby
+        elif [ $INSTANCE_TYPE -eq 3 ]; then
+                gs_ctl start -D ${datanode_dir} -M cascade_standby
+                gs_ctl build -D ${datanode_dir} -M cascade_standby
+        fi
 }
 
 function main() {
         docker_setup_env
         if [ -n "$DATABASE_ALREADY_EXISTS" ]; then
                 if [ "$(id -u)" = '0' ]; then
-                        check_env_hosts
                         write_local_host
                         /usr/sbin/sshd -D &
                         exec gosu omm "$BASH_SOURCE" "$@"
                 fi
+                
+                if [ -z "$DATABASE_APP_EXISTS" ]; then
+                        check_env_hosts
+                        echo "database already exists but application is not found, try install application."
+                        set_envfile
+                        config_user_ssh
+                        create_install_path
+                        install_application
+                        generate_xml
+                        generate_static_config_file
+                        generate_cm_cert
+                fi
+
+                if [ "$NEED_INSTALL_CM_COMPONENT" = "1" -a "$SINGLE_MODE" = "0" ]; then
+                        check_env_hosts
+                        echo "database and application already exists but cm component is not found, try install cm component."
+                        set_envfile
+                        create_cm_install_path
+                        install_cm_application
+                        generate_xml
+                        generate_static_config_file
+                        init_cm_config
+                        generate_cm_cert
+                fi
+                source ${ENVFILE}
                 echo "openGauss Database directory appears to contain a database; Skipping init"
-                start_monitor_dead_loop
+                keep_loop
                 exit 0
         fi
         check_env_hosts
         if [ "$(id -u)" = '0' ]; then
                 write_local_host
-                config_sshd
+                # config_sshd
                 set_user_passwd
                 # change to omm user
                 exec gosu omm "$BASH_SOURCE" "$@"
@@ -227,13 +324,15 @@ function main() {
         set_envfile
         generate_xml
         install_main
-        nohup $GAUSSHOME/bin/om_monitor -L $GAUSSLOG/cm/om_monitor &
-        create_user_trust
+        start_at_install
         clean_environment
-        start_monitor_dead_loop
+        keep_loop
 }
 if [ "$(id -u)" = '0' ]; then
-        chown omm:omm /opengauss
+        chown $USER:$GROUP /var/lib/opengauss
+        chown $USER:$GROUP /usr/local/opengauss
         chmod 777 /tmp
 fi
+
+
 main $@
