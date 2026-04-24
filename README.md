@@ -31,8 +31,8 @@ docker tag swr.cn-north-4.myhuaweicloud.com/opengauss-x86-64/opengauss-cm:6.0.2 
 
 arm平台:
 ```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss-cm:6.0.2
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss-cm:6.0.2 opengauss-cm:6.0.2
+docker pull swr.cn-north-4.myhuaweicloud.com/opengauss-aarch64/opengauss-cm:6.0.2
+docker tag swr.cn-north-4.myhuaweicloud.com/opengauss-aarch64/opengauss-cm:6.0.2 opengauss-cm:6.0.2
 ```
 
 ### 启动容器
