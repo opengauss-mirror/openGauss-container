@@ -60,10 +60,14 @@ function init_database() {
 
     correct_network_ip=$(get_real_ip $hostarr $curiparr)
 
+    db_port=${PGPORT}
+    ha_port=$(expr ${db_port} + 1)
+    heartbeat_port=$(expr ${db_port} + 4)
+
     index=1
     for ((i = 0; i < ${#hostarr[@]}; i++)); do
         if [ "${correct_network_ip}" != "${hostarr[i]}" ]; then
-            gs_guc set -D ${datanode_dir} -c "replconninfo${index}='localhost=${correct_network_ip} localport=5433 localheartbeatport=5436 remotehost=${hostarr[i]} remoteport=5433 remoteheartbeatport=5436'"
+            gs_guc set -D ${datanode_dir} -c "replconninfo${index}='localhost=${correct_network_ip} localport=${ha_port} localheartbeatport=${heartbeat_port} remotehost=${hostarr[i]} remoteport=${ha_port} remoteheartbeatport=${heartbeat_port}'"
             index=$(expr $index + 1)
         fi
         gs_guc set -D ${datanode_dir} -h "host all all ${hostarr[i]}/32 trust"
@@ -71,15 +75,20 @@ function init_database() {
 
     gs_guc set -D ${datanode_dir} -c "remote_read_mode=off"
     gs_guc set -D ${datanode_dir} -c "replication_type=1"
-    gs_guc set -D ${datanode_dir} -c "port=5432"
+    gs_guc set -D ${datanode_dir} -c "port=${db_port}"
     gs_guc set -D ${datanode_dir} -c "listen_addresses='*'"
-    gs_guc set -D ${datanode_dir} -c "max_connections=5000"
+    gs_guc set -D ${datanode_dir} -c "max_connections=1000"
 
     #close mot
     echo "enable_numa = false" >>${datanode_dir}/mot.conf
 }
 
 function generate_static_config_file() {
+    if [ $SINGLE_MODE -eq 1 ]; then
+        echo "single instance mode, skip generate static config file."
+        return
+    fi
+
     if [ -f ${GAUSSHOME}/bin/cluster_static_config ]; then
         rm ${GAUSSHOME}/bin/cluster_static_config
     fi
@@ -110,11 +119,14 @@ function get_nodeid() {
 }
 
 function init_cm_config() {
+    if [ $SINGLE_MODE -eq 1 ]; then
+        echo "single instance mode, skip init cm config."
+        return
+    fi
+
     cp ${GAUSSHOME}/share/config/cm_server.conf.sample ${cm_config_path}/cm_server/cm_server.conf
     cp ${GAUSSHOME}/share/config/cm_agent.conf.sample ${cm_config_path}/cm_agent/cm_agent.conf
-    if [ ! -d $GAUSSHOME/share/sslcert/cm ]; then
-        mkdir $GAUSSHOME/share/sslcert/cm
-    fi
+    
     get_nodeid
     nodeid=$?
     if [ $nodeid == -1 ]; then
@@ -122,8 +134,8 @@ function init_cm_config() {
         exit 1
     fi
 
-    cmserver_log=${GAUSSLOG}/cm/cm_server
-    cmagent_log=${GAUSSLOG}/cm/cm_agent
+    cmserver_log=${cm_server_log}
+    cmagent_log=${cm_agent_log}
     cm_ctl set --param --server -k log_dir="'${cmserver_log}'" -n $nodeid
     cm_ctl set --param --agent -k log_dir="'${cmagent_log}'" -n $nodeid
     cm_ctl set --param --agent -k unix_socket_directory="'$GAUSSHOME'" -n $nodeid
@@ -169,6 +181,14 @@ EOF
 }
 
 function generate_cm_cert() {
+    if [ $SINGLE_MODE -eq 1 ]; then
+        echo "single instance mode, skip generate cm cert."
+        return
+    fi
+
+    if [ ! -d $GAUSSHOME/share/sslcert/cm ]; then
+        mkdir $GAUSSHOME/share/sslcert/cm
+    fi
     client_cmd="cm_ctl encrypt -M client -D $GAUSSHOME/share/sslcert/cm"
     server_cmd="cm_ctl encrypt -M server -D $GAUSSHOME/share/sslcert/cm"
     expect_encrypt "${client_cmd}" "${GS_PASSWORD}" "encrypt success."
@@ -215,6 +235,73 @@ function create_user_trust() {
     echo "start to create omm user trust"
     timeout 600 sh create_trust.sh /home/omm/hostfile $GS_PASSWORD
 
+}
+function install_application() {
+        cd ${package_path}
+        enterprise_pkg_file=$(ls /openGauss-All-*.tar.gz)
+        tar -xf ${enterprise_pkg_file} -C .
+        plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-Server-\(.*\).tar.bz2/\1/g')
+        tar -xf openGauss-Server-${plat_info}.tar.bz2 -C ${app_path}
+        
+        install_cm_application
+}
+
+function install_cm_application() {
+        if [ "$SINGLE_MODE" -eq 1 ]; then
+                echo "single instance mode, skip install cm component."
+                return
+        fi
+        cd ${package_path}
+        enterprise_pkg_file=$(ls /openGauss-All-*.tar.gz)
+        tar -xf ${enterprise_pkg_file} -C .
+        plat_info=$(ls openGauss*.tar.bz2 | sed 's/openGauss-Server-\(.*\).tar.bz2/\1/g')
+        tar -xf openGauss-CM-${plat_info}.tar.gz -C ${app_path}
+        tar -xf openGauss-OM-${plat_info}.tar.gz -C ${tool_path}
+        # 拷贝python3依赖的lib
+        python_version=$(python3 -V | awk '{print $2}' | awk -F'.' '{print $2}')
+        cd ${tool_path}/lib/ || exit
+        cp bcrypt/lib3.${python_version}/_bcrypt.abi3.so bcrypt/
+        cp _cffi_backend_3.${python_version}/_cffi_backend.so ./
+        cp cryptography/hazmat/bindings/lib3.${python_version}/*.so cryptography/hazmat/bindings/
+        cp nacl/lib3.${python_version}/_sodium.abi3.so nacl/
+}
+
+function create_install_path() {
+
+        dir_array=($app_path $log_path $tmp_path $tool_path $datanode_dir $package_path)
+        for i in ${dir_array[*]}; do
+                echo "${i}"
+                mkdir -p "${i}"
+        done
+        create_cm_install_path
+        chmod -R 700 $DATA_BASE
+        chmod -R 700 $APP_PATH
+}
+
+function create_cm_install_path() {
+        if [ "$SINGLE_MODE" -eq 1 ]; then
+                echo "single instance mode, skip create cm component install path."
+                return
+        fi
+        dir_array=($cm_agent_path $cm_server_path $cm_agent_log $cm_server_log $monitor_log)
+        for i in ${dir_array[*]}; do
+                echo "${i}"
+                mkdir -p "${i}"
+        done
+}
+
+function generate_xml() {
+        if [ $SINGLE_MODE -eq 1 ]; then
+                echo "single instance mode, skip generate cluster xml file."
+                return
+        fi
+        echo "python3 /usr/local/bin/generatexml.py --primary-host=${primary_host} --standby-host=${standby_hosts} --primary-hostname=${primary_name} --standby-hostname=${standby_names}"
+        python3 /usr/local/bin/generatexml.py --primary-host=${primary_host} --standby-host=${standby_hosts} --primary-hostname=${primary_name} --standby-hostname=${standby_names}
+        if [ ! -f "/home/omm/cluster.xml" ]; then
+                echo "generate cluster xml file failed."
+                exit 1
+        fi
+        echo "generate cluster xml file success."
 }
 
 function install_main() {

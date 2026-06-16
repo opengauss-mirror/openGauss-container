@@ -1,151 +1,245 @@
-## CM容器化部署
+# main 分支说明
 
-### 创建openGauss docker镜像
+main分支修改了安装目录和数据目录，其中数据目录和单机容器保持一致，可以支持单机容器扩容到带CM的主备容器场景。
+支持主备容器使用宿主机网络
+支持CM和数据库端口自定义
+支持数据目录和app目录挂载
 
-下载openGauss-docker仓库代码，构建脚本在该仓库中管理。
+# 使用说明 （支持容器网络和宿主机网络）
 
->-   构建镜像需要openGauss社区发布的企业版本包，openGauss-*-64bit-all.tar.gz。放到`openGauss-docker/dockerfiles`目录下。
->-   运行buildDockerImage.sh脚本时，如果不指定-i参数，此时默认提供SHA256检查，需要您手动将校验结果写入sha256_file_amd64文件。
->    ```
->    ## 修改sha256校验文件内容
->    cd `openGauss-docker/dockerfiles`
->    sha256sum openGauss-5.0.0-CentOS-64bit-all.tar.gz > sha256_file_amd64 
->    ```
+## 参数说明
 
->-   对于x86平台，使用社区发布的Centos_x86_64的包；对于arm平台，使用发布的openEuler-arm版本企业包。
+1. --sysctl kernel.sem="250 6400000 1000 25600"  指定系统信号量大小
+2. --security-opt seccomp=unconfined 支持运行权限，否则数据库运行有可能会缺失mbind报错。
+3. --net 指定使用容器网络还是宿主机网络
+4. -h= 指定容器内名称
+5. --ip 指定容器的ip，主备通过ip通信，安装时候就要需要确定ip。 （通过--net host宿主机网络部署主备不需要这个参数）
+6. -e primaryhost= 集群有主备之分，指定主节点的ip
+7. -e primaryname= 指定主节点名称
+8. -e standbyhosts= 指定备节点ip，多个备机以逗号分隔
+9. -e standbynames= 指定备节点容器内名称，多个备机以逗号分隔
+10. -e GS_PASSWORD= 设置数据库密码
+11. -e dbport= 指定数据库端口，会监听 port， port+1, port+4，默认5432，如果主备走容器网络不会占用宿主机端口可以不用配置
+12. -e cmport= 指定CM使用的端口，会监听 port, port+1,port+2,默认25000，如果主备走容器网络不会占用宿主机端口可以不用配置
+13. -v 宿主机和容器目录改在，涉及两个目录, 数据目录/var/lib/opengauss必须挂在到宿主机避免数据丢失; 二进制目录/usr/local/opengauss非必选，建议挂载，否则误删除容器后需要重装。
+14. opengauss-cm:6.0.3  容器镜像名称
+15. -e single 启动为单机模式. single=1单机主备模式不带CM， single=0 CM集群模式。
+16. -e instance_type=primary | standby | cascade_standby 单机模式下初始化容器指定主备参数
 
-构建命令：
+### 容器内说明
+
+维护文件： /usr/local/opengauss/cluster_maintain_file， enctrypoint.sh作为守护进程会检测数据库进程不存在而重拉，如果需要主动停止进程进行维护，创建这个文件后可以手动重启等操作。
+
+## 主备容器使用宿主机网络 net=host运行
+
+启动需要传入这些参数：
 ```
-sh buildDockerImage.sh -v 5.0.0 -i
-```
-
-### 使用社区发布的镜像
-
-最新的容器镜像：
-
-x86_64平台：
-```
-docker pull swr.cn-north-4.myhuaweicloud.com/opengauss-x86-64/opengauss-cm:6.0.2
-docker tag swr.cn-north-4.myhuaweicloud.com/opengauss-x86-64/opengauss-cm:6.0.2 opengauss-cm:6.0.2
-```
-
-arm平台:
-```
-docker pull swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss-cm:6.0.2
-docker tag swr.cn-south-1.myhuaweicloud.com/opengauss/arm/opengauss-cm:6.0.2 opengauss-cm:6.0.2
-```
-
-### 启动容器
-
-搭建CM集群至少需要两个容器实例才能使用。
-
-1. 创建容器网络
-
-##### 如果多个容器部署在一台机器上，创建一个普通的容器网络即可：
-`docker network create --subnet=172.11.0.0/24 og-network`
-
-##### 如果容器跨多个节点部署，即要求节点间的容器能够进行通信。业界有多种实现方式，这里提供一种作为参考，用户可以自行选择。
-
-选择一台部署progrium/consul容器：
-```
-docker pull progrium/consul
-docker run -d -p 8500:8500 -h consul --name consul progrium/consul -server -bootstrap
-```
-
-每个节点的docker都进行修改：
-vim /usr/lib/systemd/system/docker.service
-在ExecStart一栏后面追加：
-```
--H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock --cluster-store=consul://192.168.0.94:8500 --cluster-advertise=eth0:2376
-```
-**192.168.0.94** 是部署consul的机器ip。
-
-修改完成后需要重启docker：
-```
-systemctl daemon-reload
-systemctl restart docker
-```
-
-创建overlay网络
-```
-docker network create -d overlay --subnet 10.22.1.0/24  --gateway 10.22.1.1 og-network
-```
-
-1. 启动多个容器实例
-   
-```
-# ip需要和容器网络在同一网段，几个实例的ip和节点名称不能重复。如下示例1主2备：
-
-primary_nodeip="172.11.0.2"
-standby1_nodeip="172.11.0.3"
-standby2_nodeip="172.11.0.4"
+primary_nodeip="20.20.20.54"
+standby1_nodeip="20.20.20.56"
 primary_nodename=primary
 standby1_nodename=standby1
-standby2_nodename=standby2
 
-OG_NETWORK=og-network
+OG_NETWORK=host
+GS_PASSWORD=test@123
+```
+
+### 启动实例1
+```
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-01 --net ${OG_NETWORK}  -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
+```
+
+### 启动实例2
+```
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-02 --net ${OG_NETWORK}  -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss  -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
+```
+
+
+## 主备容器使用自定义容器网络运行
+
+todo
+
+## 从不带CM单机容器（server仓发布的容器镜像）扩主备，在部署到带cm容器 -- 使用宿主机网络
+
+### 1. 通过主机网络搭建主备容器（不带CM -- Server仓库的容器）
+
+```
+docker run --name opengauss-og1 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-tde:6.0.3sp2
+
+docker run --name opengauss-og2 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-tde:6.0.3sp2 -M standby
+```
+
+配置容器端口是22100 （5432被占用情况下可以自定义配置）
+```
+echo "port=22100" >> /usr2/zxb/cmtest/data/postgresql.conf
+```
+
+启动容器
+```
+docker start opengauss-og1
+docker start opengauss-og2
+```
+### 2. 配置主备参数
+
+配置主机参数
+```
+primary_name=opengauss-og1
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"replconninfo1='localhost=20.20.20.54 localport=22101 localheartbeatport=22104 localservice=22105 remotehost=20.20.20.56 remoteport=22101 remoteheartbeatport=22104 remoteservice=22105'\""
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'remote_read_mode=off'"
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'replication_type=1'"
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"application_name='dn_master'\""
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.54/32 trust'"
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.56/32 trust'"
+```
+
+
+配置备机参数
+```
+standby_name=opengauss-og2
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"replconninfo1='localhost=20.20.20.56 localport=22101 localheartbeatport=22104 localservice=22105 remotehost=20.20.20.54 remoteport=22101 remoteheartbeatport=22104 remoteservice=22105'\""
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'remote_read_mode=off'"
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'replication_type=1'"
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"application_name='dn_standby1'\""
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.54/32 trust'"
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.56/32 trust'"
+```
+
+
+### 3. 备机启动为后端方式
+```
+docker stop ${standby_name}
+docker rm ${standby_name}
+docker run --name ${standby_name} --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss -it --entrypoint /bin/bash opengauss-tde:6.0.3sp2
+```
+
+
+### 4. 备机全量拉取主机数据
+```
+docker exec ${standby_name} su - omm -c "gs_ctl build -D /var/lib/opengauss/data -M standby"
+```
+
+### 5. 备机以standby方式重启 （去掉  -it --entrypoint /bin/bash ）
+```
+docker stop ${standby_name}
+docker rm ${standby_name}
+docker run --name ${standby_name} --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-tde:6.0.3sp2 -M standby
+```
+
+查询
+```
+docker exec ${standby_name} su - omm -c "gs_ctl query -D /var/lib/opengauss/data"
+```
+
+### 6. 停止主备容器
+
+```
+docker stop ${standby_name}
+docker stop ${primary_name}
+```
+
+### 7. 分别使用带CM的容器镜像启动主备容器
+
+注意保证挂载的数据目录和不带CM的容器一致。 其他参数参考上面介绍。
+
+主机启动
+```
+primary_nodeip="20.20.20.54"
+standby1_nodeip="20.20.20.56"
+primary_nodename=primarycm
+standby1_nodename=standby1cm
+
+OG_NETWORK=host
 GS_PASSWORD=test@123
 
-# 启动实例1
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
-
-# 启动实例2
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
-
-# 启动实例3
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-01 --net ${OG_NETWORK}  -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
 ```
 
-**说明** 
+备机启动
+```
+primary_nodeip="20.20.20.54"
+standby1_nodeip="20.20.20.56"
+primary_nodename=primarycm
+standby1_nodename=standby1cm
 
-> 如果主备实例分别在不同节点上运行，docker run启动时候使用的是宿主机网络（添加 --net host）而不是容器网络，需要对上面的命令去掉 --ip "$primary_nodeip" 。 \
-> 即主机网络下不能指定ip，因为ip是固定和主机相同的。 只有在自定义的容器网络下才可以指定ip。
-
-> 对于容器网络，可以打通几个节点做ssh互信。CM和数据库只有少部分场景需要互信。 \
-> 对于主机网络，没法建立容器和容器之间互信（因为和主机ip相同无法区分）。因此在容器里面OM工具是无法使用的，OM工具对于多节点管理强依赖ssh互信。
+OG_NETWORK=host
+GS_PASSWORD=test@123
 
 
-3. 使用脚本快速启动1主2备的cm集群容器实例
-
-在`openGauss-docker`目录下，执行`sh create_cm_contariners.sh`
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-02 --net ${OG_NETWORK}  -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss  -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
 
 ```
-This script will create three containers with cm on a single node. \n
-Please input OG_SUBNET (容器所在网段) [172.11.0.0/24]: 
-OG_SUBNET set 172.11.0.0/24
-Please input OG_NETWORK (容器网络名称) [og-network]: 
-OG_NETWORK set og-network
-Please input GS_PASSWORD (定义数据库密码)[test@123]: 
-GS_PASSWORD set
-Please input openGauss VERSION [5.0.0]: 
-openGauss VERSION set 5.0.0
-starting  create docker containers...
+
+## 安装2个单机版本集群，配置主备并部署CM高可用工具
+
+### 1. 部署两个单机
+ 
+选择opengauss-og1作为主机，扩展opengauss-og2为备机
+
+```
+docker run --name opengauss-og1 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -e dbport=5800 -e single=1 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-cm:6.0.3
+
+docker run --name opengauss-og2 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -e dbport=5800 -e single=1 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-cm:6.0.3
 ```
 
-会让填入容器网段、容器网络名称、数据库密码、容器版本号。使用默认值得话可以直接回车跳过。
-脚本执行完成后，会拉起3个容器实例，组成1主2备的cm集群。
-
-### 进入容器中查看实例状态
-
-1. 进入容器
+### 2. 配置主机参数
 ```
-docker exec -ti <containerid> /bin/bash
-su - omm
-```
-
-2. 查看集群状态
-```
-cm_ctl query -Cvid
+primary_name=opengauss-og1
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"replconninfo1='localhost=20.20.20.56 localport=5801 localheartbeatport=5804 localservice=5805 remotehost=20.20.20.54 remoteport=5801 remoteheartbeatport=5804 remoteservice=5805'\""
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'remote_read_mode=off'"
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'replication_type=1'"
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"application_name='dn_master'\""
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.54/32 trust'"
+docker exec ${primary_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.56/32 trust'"
 ```
 
-3. 连接接数据库
+主机需要把实例角色改为1，后面再重启时候才会选择正确角色：
 ```
-gsql -d postgres -r
+sed -i "s/INSTANCE_TYPE=*.*/INSTANCE_TYPE=1/g" /home/omm/.bashrc
 ```
 
->**说明**
->
->- 1. 构建的容器需要包含操作系统层
->
->- 2. 容器内仅提供CM和数据库内核工具，OM工具无法使用
 
+### 3. 配置备机参数
+```
+standby_name=opengauss-og2
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"replconninfo1='localhost=20.20.20.54 localport=5801 localheartbeatport=5804 localservice=5805 remotehost=20.20.20.56 remoteport=5801 remoteheartbeatport=5804 remoteservice=5805'\""
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'remote_read_mode=off'"
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c 'replication_type=1'"
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -c \"application_name='dn_standby1'\""
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.54/32 trust'"
+docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/data -h 'host all omm 20.20.20.56/32 trust'"
+```
+
+
+### 4. 备机以-M standby方式重启，全量build数据
+
+进入到备机容器里面(omm用户下)，添加维护文件
+
+```
+touch /usr/local/opengauss/cluster_maintain_file
+```
+
+改环境变量角色为备机：
+```
+sed -i "s/INSTANCE_TYPE=*.*/INSTANCE_TYPE=2/g" /home/omm/.bashrc
+```
+
+停止备机实例，以standby方式启动
+```
+gs_ctl stop -D /var/lib/opengauss/data
+gs_ctl start -D /var/lib/opengauss/data -M standby
+gs_ctl build -D /var/lib/opengauss/data -M standby
+
+rm /usr/local/opengauss/cluster_maintain_file
+```
+
+### 5. 主备安装cm工具 (omm用户下执行那个), 确保primaryname和standbynames与在容器内的hostname一致。
+   
+```
+export single=0
+export GS_PASSWORD=Test@123
+export primaryhost="20.20.20.56"
+export standbyhosts="20.20.20.54"
+export primaryname=openGauss56
+export standbynames=openGauss54
+
+sh /deploy_cm.sh
+```
