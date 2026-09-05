@@ -71,6 +71,7 @@ function init_database() {
             index=$(expr $index + 1)
         fi
         gs_guc set -D ${datanode_dir} -h "host all all ${hostarr[i]}/32 trust"
+		gs_guc set -D ${datanode_dir} -h "host replication all ${hostarr[i]}/32 trust"
     done
 
     gs_guc set -D ${datanode_dir} -c "remote_read_mode=off"

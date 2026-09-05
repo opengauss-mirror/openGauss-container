@@ -2,21 +2,21 @@
 
 ### 创建openGauss docker镜像
 
-下载openGauss-docker仓库代码，构建脚本在该仓库中管理。
+下载openGauss-container仓库代码，构建脚本在该仓库中管理。
 
->-   构建镜像需要openGauss社区发布的企业版本包，openGauss-*-64bit-all.tar.gz。放到`openGauss-docker/dockerfiles`目录下。
+>-   构建镜像需要openGauss社区发布的企业版本包，openGauss-All-7.0.0-openEuler20.03-CPU平台.tar.gz。放到`openGauss-docker/dockerfiles`目录下。
 >-   运行buildDockerImage.sh脚本时，如果不指定-i参数，此时默认提供SHA256检查，需要您手动将校验结果写入sha256_file_amd64文件。
 >    ```
 >    ## 修改sha256校验文件内容
 >    cd `openGauss-docker/dockerfiles`
->    sha256sum openGauss-6.0.5-CentOS-64bit-all.tar.gz > sha256_file_amd64 
+>    sha256sum openGauss-All-7.0.0-openEuler20.03-aarch64.tar.gz > sha256_file_arm64 
 >    ```
 
->-   对于x86平台，使用社区发布的Centos_x86_64的包；对于arm平台，使用发布的openEuler-arm版本企业包。
+>-   使用社区发布 openEuler20.03对应的arm和x86平台包。
 
 构建命令：
 ```
-sh buildDockerImage.sh -v 5.0.0 -i
+sh buildDockerImage.sh -v 7.0.0 -i
 ```
 
 
@@ -72,13 +72,13 @@ OG_NETWORK=og-network
 GS_PASSWORD=test@123
 
 # 启动实例1
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-01 --net ${OG_NETWORK} --ip "$primary_nodeip" -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:7.0.0
 
 # 启动实例2
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-02 --net ${OG_NETWORK} --ip "$standby1_nodeip" -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:7.0.0
 
 # 启动实例3
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:6.0.2
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined -v /data/opengauss_volume:/volume --name opengauss-03 --net ${OG_NETWORK} --ip "$standby2_nodeip" -h=$standby2_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip, $standby2_nodeip" -e standbynames="$standby1_nodename, $standby2_nodename" -e GS_PASSWORD=$GS_PASSWORD opengauss-cm:7.0.0
 ```
 
 **说明** 
