@@ -1,6 +1,6 @@
 FROM openeuler-20.03-lts:latest
 
-ENV OPENGAUSS_VERSION 6.0.2
+ENV OPENGAUSS_VERSION 7.0.0
 
 COPY openGauss-All-${OPENGAUSS_VERSION}-openEuler20.03-x86_64.tar.gz .
 COPY gosu-amd64 /usr/local/bin/gosu
@@ -8,15 +8,16 @@ ENV LANG en_US.utf8
 COPY openEuler_x86_64.repo /etc/yum.repos.d/openEuler_x86_64.repo
 
 RUN set -eux; \
-    yum install -y bzip2 bzip2-devel curl libaio readline-devel expect tar shadow hostname passwd \
-    which git python3 python3-devel openssl-devel net-tools openssh-server vim iputils lsof iproute && \
+    yum install -y bzip2 bzip2-devel curl libaio readline-devel expect tar shadow hostname passwd vi libedit libxml2 lz4 \
+    which git python3 python3-devel openssl-devel net-tools openssh-server numactl-devel unixODBC-devel vim iputils lsof iproute numactl zstd java-1.8.0-openjdk-devel unzip openblas-devel && \
     groupadd -g 70 omm;  \
     useradd -u 70 -g omm -d /home/omm omm;  \
-    mkdir -p /opengauss && \
-    chmod 700 /opengauss && \
-    mkdir -p /volume && \
-    chmod -R 755 /volume && \
-    chown -R omm:omm /opengauss
+    mkdir -p /var/lib/opengauss && \
+    mkdir -p /usr/local/opengauss && \
+    chmod 700 /var/lib/opengauss && \
+    chmod 700 /usr/local/opengauss && \
+    chown -R omm:omm /var/lib/opengauss && \
+    chown -R omm:omm /usr/local/opengauss
 
 
 ENV LANG en_US.utf8
@@ -27,8 +28,8 @@ RUN set -eux; \
      chmod +x /usr/local/bin/gosu
 
 
-COPY entrypoint.sh /usr/local/bin/
 COPY deploy_cm.sh /usr/local/bin/
+COPY entrypoint.sh /usr/local/bin/
 COPY install.sh /usr/local/bin/
 COPY util.sh /usr/local/bin/
 COPY create_trust.sh /usr/local/bin/
@@ -43,5 +44,3 @@ RUN chmod 755 /usr/local/bin/opengauss_role_update.sh;ln -s /usr/local/bin/openg
 RUN chmod 755 /usr/local/bin/generatexml.py /
 
 ENTRYPOINT ["entrypoint.sh"]
-
-EXPOSE 5432

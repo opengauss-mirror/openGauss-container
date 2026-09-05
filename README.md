@@ -5,7 +5,27 @@ main分支修改了安装目录和数据目录，其中数据目录和单机容�
 支持CM和数据库端口自定义
 支持数据目录和app目录挂载
 
-# 使用说明 （支持容器网络和宿主机网络）
+# 容器打包说明
+
+
+下载openGauss-container仓库代码，构建脚本在该仓库中管理。
+
+>-   构建镜像需要openGauss社区发布的企业版本包，openGauss-All-7.0.0-openEuler20.03-CPU平台.tar.gz。放到`openGauss-docker/dockerfiles`目录下。
+>-   运行buildDockerImage.sh脚本时，如果不指定-i参数，此时默认提供SHA256检查，需要您手动将校验结果写入sha256_file_amd64文件。
+>    ```
+>    ## 修改sha256校验文件内容
+>    cd `openGauss-docker/dockerfiles`
+>    sha256sum openGauss-All-7.0.0-openEuler20.03-aarch64.tar.gz > sha256_file_arm64 
+>    ```
+
+>-   使用社区发布 openEuler20.03对应的arm和x86平台包。
+
+构建命令：
+```
+sh buildDockerImage.sh -v 7.0.0 -i
+```
+
+# 部署容器说明 （支持容器网络和宿主机网络）
 
 ## 参数说明
 
@@ -22,9 +42,10 @@ main分支修改了安装目录和数据目录，其中数据目录和单机容�
 11. -e dbport= 指定数据库端口，会监听 port， port+1, port+4，默认5432，如果主备走容器网络不会占用宿主机端口可以不用配置
 12. -e cmport= 指定CM使用的端口，会监听 port, port+1,port+2,默认25000，如果主备走容器网络不会占用宿主机端口可以不用配置
 13. -v 宿主机和容器目录改在，涉及两个目录, 数据目录/var/lib/opengauss必须挂在到宿主机避免数据丢失; 二进制目录/usr/local/opengauss非必选，建议挂载，否则误删除容器后需要重装。
-14. opengauss-cm:6.0.3  容器镜像名称
+14. opengauss-cm:7.0.0  容器镜像名称
 15. -e single 启动为单机模式. single=1单机主备模式不带CM， single=0 CM集群模式。
 16. -e instance_type=primary | standby | cascade_standby 单机模式下初始化容器指定主备参数
+17. --ulimit nofile=1000000:1000000 指定文件句柄数为100w
 
 ### 容器内说明
 
@@ -45,13 +66,16 @@ GS_PASSWORD=test@123
 
 ### 启动实例1
 ```
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-01 --net ${OG_NETWORK}  -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --ulimit nofile=1000000:1000000 --security-opt seccomp=unconfined  --name opengauss-01 --net ${OG_NETWORK}  -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss -e dbport=22100 -e cmport=22200 opengauss-cm:7.0.0
 ```
 
 ### 启动实例2
 ```
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-02 --net ${OG_NETWORK}  -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss  -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --ulimit nofile=1000000:1000000 --security-opt seccomp=unconfined  --name opengauss-02 --net ${OG_NETWORK}  -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss  -e dbport=22100 -e cmport=22200 opengauss-cm:7.0.0
 ```
+
+如果有多个备机， -e standbynames， -e standbyhosts 里面分别传入多个节点名称和ip，以逗号分隔。
+例如：  e standbyhosts="172.0.10.5,172.0.10.6" -e standbynames="standby1,standby2"
 
 
 ## 主备容器使用自定义容器网络运行
@@ -63,9 +87,9 @@ todo
 ### 1. 通过主机网络搭建主备容器（不带CM -- Server仓库的容器）
 
 ```
-docker run --name opengauss-og1 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-tde:6.0.3sp2
+docker run --name opengauss-og1 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss:7.0.0
 
-docker run --name opengauss-og2 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-tde:6.0.3sp2 -M standby
+docker run --name opengauss-og2 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss:7.0.0 -M standby
 ```
 
 配置容器端口是22100 （5432被占用情况下可以自定义配置）
@@ -108,7 +132,7 @@ docker exec ${standby_name} su - omm -c "gs_guc reload -D /var/lib/opengauss/dat
 ```
 docker stop ${standby_name}
 docker rm ${standby_name}
-docker run --name ${standby_name} --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss -it --entrypoint /bin/bash opengauss-tde:6.0.3sp2
+docker run --name ${standby_name} --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss -it --entrypoint /bin/bash opengauss:7.0.0
 ```
 
 
@@ -121,7 +145,7 @@ docker exec ${standby_name} su - omm -c "gs_ctl build -D /var/lib/opengauss/data
 ```
 docker stop ${standby_name}
 docker rm ${standby_name}
-docker run --name ${standby_name} --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-tde:6.0.3sp2 -M standby
+docker run --name ${standby_name} --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss:7.0.0 -M standby
 ```
 
 查询
@@ -150,7 +174,7 @@ standby1_nodename=standby1cm
 OG_NETWORK=host
 GS_PASSWORD=test@123
 
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-01 --net ${OG_NETWORK}  -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-01 --net ${OG_NETWORK}  -h=$primary_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss -e dbport=22100 -e cmport=22200 opengauss-cm:7.0.0
 ```
 
 备机启动
@@ -164,7 +188,7 @@ OG_NETWORK=host
 GS_PASSWORD=test@123
 
 
-docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-02 --net ${OG_NETWORK}  -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss  -e dbport=22100 -e cmport=22200 opengauss-cm:6.0.3
+docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-opt seccomp=unconfined  --name opengauss-02 --net ${OG_NETWORK}  -h=$standby1_nodename -e primaryhost="$primary_nodeip" -e primaryname="$primary_nodename" -e standbyhosts="$standby1_nodeip" -e standbynames="$standby1_nodename" -e GS_PASSWORD=$GS_PASSWORD -v /usr2/zxb/cmtest:/var/lib/opengauss  -e dbport=22100 -e cmport=22200 opengauss-cm:7.0.0
 
 ```
 
@@ -175,9 +199,9 @@ docker run -d -it -P  --sysctl kernel.sem="250 6400000 1000 25600" --security-op
 选择opengauss-og1作为主机，扩展opengauss-og2为备机
 
 ```
-docker run --name opengauss-og1 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -e dbport=5800 -e single=1 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-cm:6.0.3
+docker run --name opengauss-og1 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -e dbport=5800 -e single=1 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-cm:7.0.0
 
-docker run --name opengauss-og2 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -e dbport=5800 -e single=1 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-cm:6.0.3
+docker run --name opengauss-og2 --privileged=true --network=host -d -e GS_PASSWORD=Test@123 -e dbport=5800 -e single=1 -v /usr2/zxb/cmtest:/var/lib/opengauss opengauss-cm:7.0.0
 ```
 
 ### 2. 配置主机参数
