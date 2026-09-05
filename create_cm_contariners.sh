@@ -59,8 +59,8 @@ while [ true ]; do
 done
 echo "GS_PASSWORD set"
 
-read -p "Please input openGauss VERSION [6.0.2]: " VERSION
-VERSION=${VERSION:-6.0.2}
+read -p "Please input openGauss VERSION [7.0.0]: " VERSION
+VERSION=${VERSION:-7.0.0}
 echo "openGauss VERSION set $VERSION"
 
 function check_input()
