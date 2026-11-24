@@ -1,27 +1,14 @@
-
 #!/bin/bash
-# create cm docker containers
-# Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
-#
-#openGauss is licensed under Mulan PSL v2.
-#You can use this software according to the terms and conditions of the Mulan PSL v2.
-#You may obtain a copy of Mulan PSL v2 at:
-#
+
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# openGauss-container is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
 #          http://license.coscl.org.cn/MulanPSL2
-#
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
-#-------------------------------------------------------------------------
-#
-# create_cm_containers.sh
-#    create cm container with one master and two slaves instance.
-#
-# IDENTIFICATION
-#    openGass-container/create_cm_containers.sh
-#
-#-------------------------------------------------------------------------
 
 #set OG_SUBNET,GS_PASSWORD,MASTER_IP,SLAVE_1_IP,MASTER_HOST_PORT,MASTER_LOCAL_PORT,SLAVE_1_HOST_PORT,SLAVE_1_LOCAL_PORT,MASTER_NODENAME,SLAVE_NODENAME
 
